@@ -44,7 +44,7 @@ if __name__ == '__main__':
     context = Context(ConcreteStrategyA())
     context.do_some_business_logic()
     print()
-    
+
     print('Client: Strategy is set to reverse sorting')
     context.strategy = ConcreteStrategyB()
     context.do_some_business_logic()
