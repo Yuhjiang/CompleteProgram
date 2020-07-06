@@ -253,3 +253,121 @@ cursor.execute("select * from hello_author")
 cursor.fetchone()  
 cursor.fetchall() 
 ```
+
+## F和Q的作用
+- F: 操作表中的某一列值，允许Django不用获取对象放到内存中再对字段进行操作，而是直接执行原生
+sql语句操作。
+```python
+from django.db.models import F
+Book.objects.update(price=F('price')+20)
+```
+- Q: 进行复杂的查询，支持&, |, ~操作符
+```python
+from django.db.models import Q
+Book.objects.filter(Q(title__icontains=keyword) | Q(ip=keyword))
+```
+
+## Django ORM批量操作符
+- bulk_create(): 需要注意，save()方法不会被调用，pre_save和post_save信号不会被发送。自增
+字段也不会自增，无法创建多对多关系。
+```python
+Entry.objects.bulk_create([
+    Entry(headline='This is a test'),
+    Entry(headline='This is only a test'),
+])
+```
+- bulk_update(): 无法更新主键，save()方法不会被调用，pre_save和post_save信号不会发送，
+如果更新的内容有重复，只有第一个会执行。
+```python
+objs = [
+    Entry.objects.create(headline='Entry 1'),
+    Entry.objects.create(headline='Entry 2'),
+]
+objs[0].headline = 'This is entry 1'
+objs[1].headline = 'This is entry 2'
+Entry.objects.bulk_update(objs, ['headline'])
+```
+
+## FORM和ModelForm的作用
+- Form是自己定义的表单结构，需要继承Django的forms.Form类，然后像Model类一样，定义字段。保存数据
+的时候，需要从POST里手动取出表单数据
+```python
+from django import forms
+class Loginform(forms.Form):
+    user = forms.CharField(max_length=12, min_length=3,
+                           error_messages={
+                               "required": "不能为空",  # 设置提示错误信息
+                               "max_length": "最大长度不能超过6",
+                               "min_length": "最小长度不能小于3",
+                           }
+                           )
+
+    phone = forms.CharField(
+        error_messages={
+            "required": "不能为空",
+        }
+    )
+
+    email = forms.EmailField(error_messages={
+        "required": "不能为空",
+        "invalid": "格式错误"}
+    )
+```
+- ModelForm是可以使用定义好的Model类，需要继承forms.ModelForm，然后在Meta类里，包含表单
+要现实的字段，提示信息，错误信息等内容。保存数据时，不用手工去取数据，直接save即可
+```python
+from django.forms import ModelForm
+class BookModelForm(ModelForm):
+    class Meta:
+        model=Book    　　　　　#对应model中的类
+        fields="__all__" 　　  #字段“__all__”显示所有字段，["title","price"..]显示部分字段
+        labels={         　　  #自定义在前端显示的名字
+            "title":"书名",
+            "price":"价格",
+            "publish":"出版社",
+            "author":"作者"
+        }
+
+def add(request):
+    if request.method=="GET":
+        model_form_obj=BookModelForm()
+        return render(request,'add.html',locals())
+    else:
+        model_form_obj=BookModelForm(request.POST)
+        # 校验数据
+        if model_form_obj.is_valid():
+            # 提交数据
+            model_form_obj.save()
+            return redirect("/index/")
+        else:
+            return render(request,"add.html",locals())
+```
+## Form中有choices字段，如何实现实时更新
+1. 重写Form的初始化方法
+```python
+from django.forms import Form
+from django.forms import fields
+
+class UserForm(Form):
+    name = fields.CharField(label='username', max_length=32)
+    email = fields.EmailField(label='Email')
+    ut_id = fields.ChoiceField(choies=[])
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['ut_id'].choices = models.UserType.objects.all().vlaues_list('id', 'title')
+
+def user(request):
+    if request.method == 'GET':
+        form = UserForm()
+        return render(request, 'user.html', {'form': form})
+```
+2. 使用ModelChoiceField字段
+```python
+from django.forms import Form, fields, models
+
+class UserForm(Form):
+    name = fields.CharField(label='Username', max_length=32)
+    email = fields.EmailField(label='Email')
+    ut_id = models.ModelChoiceField(queryset=models.UserType.objects.all())
+```
