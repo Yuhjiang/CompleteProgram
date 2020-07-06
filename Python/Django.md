@@ -371,3 +371,129 @@ class UserForm(Form):
     email = fields.EmailField(label='Email')
     ut_id = models.ModelChoiceField(queryset=models.UserType.objects.all())
 ```
+
+## ForeignKey中，on_delete参数的作用
+当一个ForeignKey被删除后，Django会通过指定的on_delete参数模仿sql的约束作用
+- `CASCADE`: 级联删除
+- `PROJECT`: 抛出ProjectedError，以阻止对象被删除
+- `SET_NULL`: 设置ForeignKey为null，外键要允许为null
+- `SET_DEFAULT`: 设置成默认值，必须要设置外键的默认值
+- `SET`: 设置一个传入SET的值，或者一个可调用对象（会执行对象，返回结果）
+```python
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.db import models
+
+def get_sentinel_user():
+    return get_user_model().objects.get_or_create(username='deleted')[0]
+
+class MyModel(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET(get_sentinel_user),   
+    )
+```
+
+## Django中csrf_token机制
+- Django使用中间件`django.middleware.csrf.CsrfViewMiddleware`来完成跨站请求伪攻击的防御
+- 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个
+视图取消csrf_token校验
+- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次
+都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否
+一致。
+- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，
+处理请求的时候，中间件会验证两个csrftoken是否一致。
+
+## Django信号
+
+### 常用信号：
+- django.db.models.signals.pre_save & django.db.models.signals.post_save: ORM模型save()
+方法调用前后发送信号
+- django.db.models.signals.pre_delete & django.db.models.signals.post_delete: delete()
+方法调用前后发送信号
+- django.db.models.signals.m2m_changed: 多对多字段被修改时发送信号
+- django.core.signals.request_started & django.core.signals.request_finished接收
+和关闭HTTP请求时发送信号
+
+### 监听信号
+- `Signal.connect(receiver, sender=None, weak=True, dispath_uid=None)[source]`
+    - receiver: 当前信号的回调函数
+    - sender: 指定从哪个发送方接收信号
+    - weak: 是否弱引用
+    - dispatch_uid: 信号接收器的唯一标识，避免信号多次发送
+```python
+def my_callback(sender, **kwargs):
+    print('Request finished!')
+
+from django.core.signals import request_finished
+
+# 1. 手动方式连接
+request_finished.connect(my_callback)
+# 2. receiver装饰器
+from django.core.signals import request_finished
+from django.dispatch import receiver
+
+@receiver(request_finished)
+def my_callback(sender, **kwargs):
+    print('Request finished!')
+
+# 3. 接收特定发送者的信号
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from myapp.models import MyModel
+
+@receiver(pre_save, sender=MyModel)
+def my_handler(sender, **kwargs):
+    pass
+
+# 4. 防止重复信号
+from django.core.signals import request_finished
+request_finished.connect(my_callback, dispatch_uid='my_unique_identifier')
+```
+### 自定义信号
+类原型 Signal(providing_args=list)[source], providing_args参数是一个列表，由信号提供给
+监听者的参数的名称组成
+```python
+import django.dispatch
+
+# 向接收者提供size和topping参数
+pizza_done = django.dispatch.Signal(providing_args=['toppings', 'size'])
+```
+
+### 发送信号
+sender必须提供（大多数情况下是个类名），可以提供任意数量的其他关键字参数
+```python
+from django.core.signals import Signal
+Signal.send(sender, **kwargs)[source]
+
+Signal.send_robust(sender, **kwargs)[source]
+
+# Example
+class PizzaStore(object):
+    def send_pizza(self, toppings, size):
+        pizza_done.send(sender=self.__class__, toppings=toppings, size=size)
+```
+
+### 断开信号
+```python
+Signal.disconnect(receiver=None, sender=None, dispatch_uid=None)[source]
+```
+
+### 其他信号
+[https://docs.djangoproject.com/en/3.0/ref/signals/](https://docs.djangoproject.com/en/3.0/ref/signals/)
+#### pre_init
+初始化一个模型前，会被触发
+- sender: 创建实例的类
+- args: 位置参数
+- kwargs: 关键词参数
+```python
+q = Question(question_text="What's new?", pub_date=timezone.now())
+# sender	Question (the class itself)
+# args	[] (an empty list because there were no positional arguments passed to __init__())
+# kwargs	{'question_text': "What's new?", 'pub_date': datetime.datetime(2012, 2, 26, 13, 0, 0, 775217, tzinfo=<UTC>)}
+```
+
+#### post_init
+初始化完成后触发
+- sender: 创建实例的类
+- instance: 创建好的实例
