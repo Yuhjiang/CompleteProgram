@@ -497,3 +497,85 @@ q = Question(question_text="What's new?", pub_date=timezone.now())
 初始化完成后触发
 - sender: 创建实例的类
 - instance: 创建好的实例
+
+## Django使用现有的数据库生成models
+- 使用inspectdb生成models.py
+```shell script
+python manage.py inspectdb > blogapp/models.py
+```
+- 后续想让修改model的字段，并可以使用django的数据库迁移功能，在Meta中设置managed=True
+- 首次数据迁移migrate时，因为数据库已经存在，需要使用--fake-initial参数
+```shell script
+python manage.py makemigrations
+python manage.py migrate --fake-initial
+```
+
+## Django migrate --fake-initial和 --fake的区别
+- fake-initial 可以跳过app的初始化，如果app里的模型对应的表已经创建好，初始化项目的时候
+使用--fake-initial。这个命令会跳过创建表的过程，但是对已存在表的修改会被执行。
+- fake 告诉Django标记某次迁移已经被应用到数据库中，不会运行sql语句去改动表。当有人工修改
+表结构时，可以用fake跳过这次修改
+
+## ORM和原生SQL的优缺点
+### 1. ORM
+优点：
+使用ORM最大的优点是快速开发，集中在业务上而不是数据库上
+- 隐藏了数据访问的细节，通用数据库交互简单易行，避免了不规范，冗余，风格不一致的SQL语句，避免
+sql语句上的bug
+- 将数据库表和对象模型关联，只需针对相关的对象模型进行编码，无法考虑对象模型和数据表之间的转化
+- 方便数据库的迁移，不需要修改对象模型，只需要修改数据库的配置
+缺点：
+- 性能上存在问题，自动进行数据库关系的映射需要消耗系统资源
+- 在处理多表联查、where条件复杂的查询时，ORM可能会生成效率低下的SQL
+- SQL语句是ORM框架自动生成的，SQL调优不方便
+- 因为返回的Object会很多成员变量和方法，会消耗更多内存
+
+### 2. 原生SQL
+优点
+- 进行复杂查询时更加灵活
+- 可以根据需要编写特殊的sql语句
+缺点
+- 需要对输入进行严格的检测
+- 可能会有sql注入漏洞
+- 不能使用orm方便的特性
+
+## Django contenttype作用
+[Django contenttypes 应用](https://blog.csdn.net/Ayhan_huang/article/details/78626957)
+contenttypes是Django内置的一个应用，追踪项目中所有的app和model的对应关系，并记录在ContentType表中。
+```sql
++----+-----------------------+--------------------+
+| id | app_label             | model              |
++----+-----------------------+--------------------+
+|  3 | admin                 | logentry           |
+| 24 | album                 | album              |
+| 25 | album                 | picture            |
+|  5 | auth                  | group              |
+|  4 | auth                  | permission         |
+| 15 | blog                  | category           |
+| 21 | blog                  | comment            |
+```
+比如一个model中，有一个ForeignKey需要关联多个表的，正常情况下，一个ForeignKey只能和一张表
+做关联，使用contenttypes中提供的特殊字段GenericForeignKey，可以解决上述的问题
+- 在model中定义ForeignKey字段，关联到ContentType表，通常这个字段命名为'content_type'
+- 在model中定义PositiveIntegerField字段，用来存储关联表中的主键，通常命名为'object_id'
+- 在model中定义GenericForeignKey字段，传入上述两个字段的名字
+```python
+from django.db import models
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+
+class Electrics(models.Model):
+    name = models.CharField(max_length=32)
+    coupons = GenericRelation(to='Coupon')  # 用于反向查询，不会生成新的字段
+
+class Foods(models.Model):
+    name = models.CharField(max_length=32)
+    coupons = GenericRelation(to='Coupon')
+
+class Coupon(models.Model):
+    name = models.CharField(max_length=32)
+    
+    content_type = models.ForeignKey(to=ContentType, on_delete=models.DO_NOTHING)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+```
