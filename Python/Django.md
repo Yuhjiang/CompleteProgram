@@ -56,6 +56,44 @@
 的信息，比对是否是同源请求。
 - UpdateCacheMiddleware/FetchFromCacheMiddleware: 全站缓存
 
+### 自定义中间件
+1. 基于函数的
+```python
+def simple_middleware(get_response):
+    # One-time configuration and initialization.
+
+    def middleware(request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+
+        response = get_response(request)
+
+        # Code to be executed for each request/response after
+        # the view is called.
+
+        return response
+
+    return middleware
+```
+2. 基于类的(Django3.0开始，逐渐弃用process_request, process_response)
+```python
+class SimpleMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # One-time configuration and initialization.
+
+    def __call__(self, request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+
+        response = self.get_response(request)
+
+        # Code to be executed for each request/response after
+        # the view is called.
+
+        return response
+```
+
 ## 什么事FBV和CBV
 - FBV是`function base views`基于函数视图，CBV是`class base views`基于类的视图
 - FBV模式，URL匹配成功后，会直接执行对应的视图函数
