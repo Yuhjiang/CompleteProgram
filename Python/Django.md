@@ -40,6 +40,21 @@
 - 可以修改request和response对象的内容，在视图执行前做一些操作，判断浏览器来源，做一个拦截器
 - 可以判断浏览器的来源是PC还是手机
 - 可以做一个拦截器，一定时间内某个ip对网页第访问次数过多，可以加入黑名单拒绝服务
+- ![中间件执行顺序](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9tbWJpei5xcGljLmNuL21tYml6X3BuZy9idWFGTEZLaWNSb0M5R3pCZWliQXExVVBKMFpsM3Zsd0RpYXM2dEhhN2x5aWFKaWFmWldPbmZsMWZPUVBNT2J2SndUWEF6a1h0UjJnalBZb0JmaEdJRkRYMWJnLzY0MA?x-oss-process=image/format,png)
+
+### 常用中间件举例
+- SecurityMiddleware: XXS攻击防御，HTTPS连接相关的设置
+- SessionMiddleware: session会话支持
+- CommonMiddleware: 支持对URL的重写
+    - APPEND_SLASH: 设置为True时，如果url没有以斜杆结尾并且找不到url配置，会形成一个斜线
+    结尾的新url
+    - PREPEND_WWW: 设置为True时，缺少www.的URL会被重定向到相同的但是以www.开头的URL
+- AuthenticationMiddleware: 在视图函数执行前，向每个接收到的user对象添加到HttpRequest对象，
+表示当前登录的用户（会存入request.user)
+- MessageMiddleware: 开启基于cookie和会话的消息支持
+- XFrameOptionsMiddleware: 跨站请求伪造攻击中的点击攻击，通过识别 X-Frame-Options请求头
+的信息，比对是否是同源请求。
+- UpdateCacheMiddleware/FetchFromCacheMiddleware: 全站缓存
 
 ## 什么事FBV和CBV
 - FBV是`function base views`基于函数视图，CBV是`class base views`基于类的视图
@@ -64,6 +79,16 @@ def dispatch(self, request, *args, **kwargs):
 ## Django的request的方法是什么时候创建的？
 - 请求一个页面的时候，Django创建了一个HttpRequest对象，包含了request数据。Django会加载对应
 的视图，然后把request作为第一个参数传递到视图函数。
+- Request对象在WSGIHandler里创建，将environ参数封装成request
+```python
+class WSGIHandler(base.BaseHandler):
+    def __call__(self, environ, start_response):
+        set_script_prefix(get_script_name(environ))
+        signals.request_started.send(sender=self.__class__, environ=environ)
+        request = self.request_class(environ)
+        response = self.get_response(request)
+        ...
+```
 - HttpRequest对象的内容
     - scheme：请求的协议，通常是http or https
     - body: 原始的请求body数据，为字节字符串类型，可以用于自定义的转换方式比如图片，xml格式
@@ -231,6 +256,7 @@ Entry.objects.extra(where=['headline=%s'], params=['Lennon'])
 - defer(*fields): 不需要的字段延迟加载处理
 - only（*fields): 只获取某些字段的值，不延迟加载，其他的值会延迟加载
 - using(alias): 指定使用的数据库
+- first()/last(): 返回第一条/最后一条记录
 
 ## Django中三种sql语句的方法
 1. 使用extra
@@ -400,7 +426,8 @@ class MyModel(models.Model):
 视图取消csrf_token校验
 - 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次
 都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否
-一致。
+一致。(保存分两种，settings里设置了CSRF_USE_SESSIONS，就会从session里获取，否则就从
+cookies里获取)
 - 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，
 处理请求的时候，中间件会验证两个csrftoken是否一致。
 
