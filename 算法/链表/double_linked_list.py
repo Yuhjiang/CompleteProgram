@@ -86,7 +86,7 @@ class LinkedList:
         else:
             tmp = self.head
             for _ in range(index-1):
-                tpm = tmp.next
+                tmp = tmp.next
             tmp.previous.next = tmp.next
             tmp.next.previous = tmp.previous
 
