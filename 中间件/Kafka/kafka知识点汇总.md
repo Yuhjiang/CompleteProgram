@@ -51,3 +51,66 @@ protocol2://hostname2:port2"，protocol代表协议类型，支持PLAINTEXT、SS
 只会被一个消费者处理**
 - 如果所有的消费者隶属于不同的消费组，所有的消息都会被广播给所有的消费者，每条消息都会被所有
 得分消费者处理。
+
+## Kafka消费再均衡
+- 再均衡是指分区所属权从一个消费者转移到另一个消费者的行为。它为消费组具备高可用行和伸缩性
+提供保障，使用户可以方便安全地删除消费组内的消费者或者往消费组添加消费者。
+- 再均衡期间，消费组内的消费者无法读取消息。
+- 再均衡可能会造成重复消费，如果A正在消费，并且还没有提交位移，分区被分配给了B，B又从被消费过
+地方开始重新消费
+- 再均衡前，需要提交已经消费的位移。
+
+## Kafka中ProducerBatch是什么？
+- 主线程创建的消息会被缓存到消息累加器RecordAccumulator，Sender线程负责从累加器中获取信息发送
+给Kafka
+- 生产者的消息会被追加到RecordAccumulator中的某个双端队列，队列中的内容是ProducerBatch。
+- ProducerBatch包含了一个或多个ProducerRecord，这样可以节省信息的尺寸，减少网络请求的
+次数提升整体的吞吐量
+
+## (Java Kafka)生产者参数配置
+- bootstrap.servers: 用来指定生产者连接Kafka集群的地址，多个地址逗号隔开
+- key.serializer/value.serializer: broker接收的消息必须以字节数组形式存在，在发往broker
+前需要做序列化操作
+- client.id: 设置生产者的id
+- acks: 指定分区中必须要有多少个副本收到这条消息之后生产者才会认为这条消息是成功写入的。
+- max.request.size: 限制生产者客户端发送的消息的最大值
+- retries&retry.backoff.ms: retries用来配置生产者重试的次数，默认为0；retry.backoff.ms
+限制了两次重试的间隔
+- compression.type: 消息的压缩方式，对消息压缩可以减少网络传输量，降低网络I/O
+- connection.max.idle.ms: 指定多久后关闭闲置的连接
+- linger.ms: 指定生产者发送ProducerBatch之前等待更多的消息加入ProducerBatch的时间。
+生产者会在ProductorBatch被填满或超时后发送。
+- receive.buffer.bytes: 设置Socket接收消息缓冲区的大小，默认是32KB。当kafka和producer处于
+不同机房时建议调大参数
+- send.buffer.bytes: 设置Socket发送消息缓冲区大小，默认是128KB。
+- request.timeout.ms: 设置Producer等待请求响应的最长时间，默认是30000ms，请求超时后可以进行重试。
+- max.in.flight.requests.per.connection: 闲置每个连接最多缓存的请求数
+
+## (Java Kafka)消费者参数配置
+- bootstrap.servers: 指定连接kafka集群的broker地址
+- group.id: 消费者隶属的消费组id
+- key.serializer&value.serializer: 消费者从broker取消息要用的反序列化格式
+- fetch.min.bytes: 配置消费者一次拉取请求中能从kafka拉取的最小数据量。如果返回给消费者
+的数据量小于设置值，会等待直到满足这个参数
+- fetch.max.bytes: 用来配置消费者一次拉取请求中从kafka中拉取的最大数据量，
+如果第一个非空分区中拉取的第一条消息大于该值，消息会返回。想要限制消费者最大能接受的数据量
+通过message.max.bytes设置
+- fetch.max.wait.ms: 指定Kafka的等待时间，默认是500ms
+- max.partition.fetch.bytes: 配置从每个分区里返回给消费者的最大数据量
+- max.poll.records: 配置消费者在一次拉取请求中拉取的最大消息数
+- connections.max.idle.ms: 指定多久之后关闭闲置的连接
+- exclude.internal.topics: kafka内部主题__consumer_offsets&__transaction_state是否
+向消费者公开
+- receive.buffer.bytes: 设置Socket接收消息缓冲区大小，消费者和kafka不同机房情况下适当调大
+- send.buffer.bytes: 设置Socket发送消息缓冲区大小，默认128KB
+- request.timeout.ms: 配置消费者请求响应的最长时间
+- metadata.max.age.ms: 配置元数据的过期时间，如果元素在参数限定时间范围内没有进行更新，会被
+强制更新
+- reconnect.backoff.ms: 配置尝试重新连接指定主机之前的等待时间
+- retry.backoff.ms: 配置尝试重新发送失败的请求到指定主题分区之前的等待时间
+- isolation.level: 配置消费者事务隔离级别
+- max.poll.interval.ms: 通过消费组管理消费者时，该配置指定拉取消息线程最长的空闲时间
+- auto.offset.reset: 每当消费者查找不到所记录的消费位移时，根据参数选择是从最新还是最旧一条
+消息开始读
+- enable.auto.commit: 是否要自动提交位移
+- auto.commit.interval.ms: 配置自动提交消费位移的时间间隔
