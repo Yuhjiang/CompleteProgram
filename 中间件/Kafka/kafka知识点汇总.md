@@ -31,3 +31,23 @@ offset是消息在分区中的唯一标识，可以保证消息在分区内的�
 - 同步复制要求所有能工作的leader副本都复制完，一条消息才能被确认为已成功提交。而异步复制，
 消息写入leader就被认为成功提交，但是如果发生宕机，消息还没同步完，就会造成数据丢失。Kafka通过
 HW和LEO机制权衡了数据可靠性和性能。
+
+## Kafka参数设置
+- zookeeper.connect: 指明broker连接的Zookeeper集群的地址，多个节点使用","隔开，例如"
+localhost1:2181,localhost2:2181,localhost3:2181"
+- listeners: 指明broker监听客户端连接的地址列表，配置格式为"protocol1://hostname1:port1,
+protocol2://hostname2:port2"，protocol代表协议类型，支持PLAINTEXT、SSL、SASL_SS。如果
+不指定主机，默认是网卡。
+    - advertised.listeners: 主要用于IaaS，包含公网网卡和私网网卡时，advertise.listeners绑定
+    公网IP供外部客户端使用，listeners绑定内网IP供broker间通信
+- broker.id: kafka集群broker唯一标识
+- log.dir&log.dirs: Kafka把所有消息存到磁盘上，这两个参数用来设置消息日志存储的位置。log.dirs的
+优先级比log.dir高。
+- message.max.bytes: 用来设置broker所能接收消息的最大值，默认值是1000012（B），约等于976.6KB。
+如果Producer发送的数据大于这个参数，会报RecordToolLargeException异常。
+
+## Kafka消息消费模式
+- 如果所有消费者隶属于同一个消费组，所有的消息都会被均衡地投递给每一个消费者，**即每个消费
+只会被一个消费者处理**
+- 如果所有的消费者隶属于不同的消费组，所有的消息都会被广播给所有的消费者，每条消息都会被所有
+得分消费者处理。
