@@ -8,6 +8,8 @@ D->A
 from typing import List
 from queue import Queue
 
+INFINITY = 65535
+
 
 class Edge:
     def __init__(self, v1: int, v2: int, weight: int):
@@ -87,4 +89,100 @@ class Graph:
             w = w.next
 
     # 3.  无权图的单源最短路径算法
-    
+    def unweighted(self, dist: List[int], path: List[int], s: int):
+        q = Queue()
+
+        for _ in range(self.nv):
+            dist.append(-1)
+            path.append(-1)
+
+        dist[s] = 0
+        q.put(s)
+
+        while not q.empty():
+            v = q.get()
+            w = self.graph[v]
+            while w:
+                if dist[w.v] == -1:
+                    # 没有被访问过
+                    dist[w.v] = dist[v] + 1
+                    path[w.v] = v
+                    q.put(w.v)
+                w = w.next
+
+    # 4. 有权图的单源最短路径算法
+    def find_min_dist(self, dist: List[int], collected: List[int]):
+        min_v = 0
+        min_dist = INFINITY
+
+        for v in range(self.nv):
+            if not collected[v] and dist[v] < min_dist:
+                min_dist = dist[v]
+                min_v = v
+        if min_dist < INFINITY:
+            return min_v
+        else:
+            return None
+
+    def dijkstra(self, dist, path, s):
+        collected = []
+        for v in range(self.nv):
+            collected.append(False)
+            dist.append(INFINITY)
+            path.append(-1)
+
+        dist[s] = 0
+
+        while True:
+            v = self.find_min_dist(dist, collected)
+            if v is None:
+                break
+            collected[v] = True
+
+            w = self.graph[v]
+            while w:
+                if not collected[w.v] and dist[w.v] > dist[v] + w.weight:
+                    dist[w.v] = dist[v] + w.weight
+                    path[w.v] = v
+                w = w.next
+
+
+if __name__ == '__main__':
+    edges = [
+        [1, 0, 1],
+        [1, 3, 2],
+        [1, 2, 3],
+        [2, 4, 4],
+        [3, 4, 4],
+    ]
+
+    g = Graph()
+    g.create_graph(5, 5, edges)
+    dist = []
+    path = []
+    g.dijkstra(dist, path, 1)
+    print(dist, path)
+
+    edges = [
+        [0, 1, 2],
+        [0, 3, 1],
+        [1, 3, 3],
+        [1, 4, 10],
+        [2, 0, 4],
+        [2, 5, 5],
+        [3, 4, 2],
+        [3, 5, 8],
+        [3, 6, 4],
+        [3, 2, 2],
+        [4, 6, 6],
+        [6, 5, 1]
+    ]
+    g.create_graph(7, 12, edges)
+    dist, path = [], []
+    g.unweighted(dist, path, 2)
+    print(dist, path)
+    dist = []
+    path = []
+    g.dijkstra(dist, path, 0)
+    print(dist, path)
+
