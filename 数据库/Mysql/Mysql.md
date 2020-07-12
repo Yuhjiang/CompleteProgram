@@ -6,6 +6,66 @@
 - 创建数据库 `CREATE DATABASE database_name;`
 - 删除数据库 `DROP DATABASE database_name;`
 
+### 创建表
+
+```txt
+CREATE TABLE <表名>
+(
+字段名1，数据类型 [列级别约束条件] [默认值],
+字段名2，数据类型 [列级别约束条件] [默认值],
+...
+[表级别约束条件]
+)
+```
+
+Example:
+
+```sql
+CREATE TABLE tb_emp1
+(
+  id INT(11) PRIMARY KEY,
+  name VARCHAR(25),
+  deptId INT(11),
+  salary FLOAT
+);
+```
+
+#### 主键约束
+
+- 是表中一列或多列的组合，主键约束(Primary Key Constraint)要求主键列的数据唯一，并且不允许为空。可以和其他表做关联，也可以加快数据库查询的速度。
+
+- 单字段主键由一个字段组成，语法规则`字段名 数据类型 PRIMARY KEY [默认值]`。也可以在定义所有列之后指定主键`[CONSTRAINT <约束名>] PRIMARY KEY([字段名])`
+
+  ```sql
+  CREATE TABLE tb_emp1
+  (
+    id INT(11) PRIMARY KEY,
+  	...
+  );
+  
+  CREATE TABLE tb_emp1
+  (
+    id INT(11),
+    ...
+    PRIMARY KEY(id)
+  );
+  ```
+
+- 多字段联合主键，`PRIMARY KEY [字段1] [字段2]...`
+
+  ```sql
+  CREATE TABLE tb_emp2
+  (
+    name VARCHAR(25),
+    deptId INT(11),
+    PRIMARY KEY(name, deptId)
+  )
+  ```
+
+#### 外键约束
+
+- 外键用来在两个表的数据之间建立链接
+
 ## 数据库概念
 
 ### 数据库引擎
@@ -28,6 +88,18 @@
 - 可以把数据文件和索引文件放在不同的目录下
 - 每个字符列可以有不同的字符集
 - 创建数据库时，产生3个文件，frm存储表定义，MYD是数据文件，MYI是索引文件
+
+#### 3. MEMORY存储引擎
+
+- 将表中数据存储到内存中，为查询和引用其他表数据提供快速访问
+- MEMORY每个表最多支持32个索引，每个索引16列，以及500B最大键长度
+- 存储引擎执行HASH和BTREE索引
+- 可以在一个MEMORY表中有非唯一键
+- 使用一个固定的记录长度格式
+- 不支持BLOB和TEXT
+- 支持AUTO_INCREMENT列和对可包含NULL值的列索引
+- 所有客户端共享，内容被存在内存中
+- 不再需要MEMORY表时，执行`DELETE FROM  or TRUNCATE TABLE or DROP TABLE`
 
 ### 聚集索引和非聚集索引
 - InnoDB是聚集索引，MyISAM是非聚集索引。
