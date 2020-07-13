@@ -3,7 +3,7 @@ import os
 
 def generate_markdown(filename):
     ignore_files = _get_ignore_dirs_files(['.git', '.idea'])
-    with open('filename', 'w+') as f:
+    with open(filename, 'w+') as f:
         for root, dirs, files in os.walk('.', topdown=True):
             if is_ignored(ignore_files, root):
                 continue
