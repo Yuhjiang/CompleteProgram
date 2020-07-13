@@ -64,7 +64,164 @@ CREATE TABLE tb_emp1
 
 #### 外键约束
 
-- 外键用来在两个表的数据之间建立链接
+- 外键用来在两个表的数据之间建立链接。外键对应的是参照完整性，可以为空值，如果不是空值则每一个必须等于另一个表中的主键。
+
+  - 主表(父表): 对于两个具有关联关系的表，相关联字段中主键所在的那个表
+
+  - 从表(子表): 对于两个具有关联关系的表，相关联字段中外键所在的那个表
+
+- 创建外键的语法`[CONSTRAINT <约束名>] FOREIGN KEY 字段1 [, 字段2...] REFERENCE <主表名> 主键列1 [, 主键列2, ...]`
+
+  ```sql
+  CREATE TABLE tb_emp5
+  (
+    id INT(11) PRIMARY KEY,
+    salary FLOAT,
+    CONSTRAINT fk_empt_dept1 FOREIGN KEY(deptId) REFERENCE tb_dept1(id)
+  );
+  ```
+
+#### 非空约束
+
+- 指定字段的值不能为空。`字段名 数据类型 NOT NULL`
+
+  ```sql
+  CREATE TABLE tb_emp8
+  (
+    name VARCHAR(25) NOT NULL,
+    salary FLOAT
+  )
+  ```
+
+#### 唯一约束
+
+- 要求该列唯一，允许为空，但只能出现一个空值。`字段名 数据类型 UNIQUE`
+
+  ```sql
+  CREATE TABLE tb_emp9
+  (
+    id INT(11) PRIMARY KEY,
+    location VARCHAR(50) UNIQUE
+  );
+  
+  CREATE TABLE tb_emp9
+  (
+    id INT(11) PRIMARY KEY,
+    name VARCHAR(22),
+    CONSTRAINT STH UNIQUE(name)
+  );
+  ```
+
+- 一个表中可以有多个字段声明为UNIQUE，但只能有一个PRIMARY声明
+
+#### 使用默认约束
+
+- 追定某列的默认值。`字段名 数据类型 DEFAULT 默认值`
+
+  ```sql
+  CREATE TABLE tb_emp7
+  (
+    id INT(11) PRIMARY KEY,
+    deptId INT(11) DEFAULT 1111
+  );
+  ```
+
+#### 设置表的属性自增
+
+- `字段名 数据类型 AUTO_INCREMENT`
+
+  ```sql
+  CREATE TABLE tb_emp7
+  (
+    id INT(11) PRIMARY KEY AUTO_INCREMENT,
+    deptId INT(11) DEFAULT 1111
+  );
+  ```
+
+### 查看数据表的结构
+
+- 查看表的基本结构：DESCRIBE 表名;  DESC 表名;
+
+  ```sql
+  mysql> desc worker;
+  +-------+-------------+------+-----+---------+----------------+
+  | Field | Type        | Null | Key | Default | Extra          |
+  +-------+-------------+------+-----+---------+----------------+
+  | ID    | int(11)     | NO   | PRI | NULL    | auto_increment |
+  | name  | varchar(30) | YES  |     | NULL    |                |
+  +-------+-------------+------+-----+---------+----------------+
+  ```
+
+- 查看表的详细结构: SHOW CREATE TABLE <表名\G>
+
+  ```sql
+  mysql> show create table worker \G
+  *************************** 1. row ***************************
+         Table: worker
+  Create Table: CREATE TABLE `worker` (
+    `ID` int(11) NOT NULL AUTO_INCREMENT,
+    `name` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    PRIMARY KEY (`ID`)
+  ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ```
+
+### 修改数据表
+
+- 修改表名`ALTER TABLE <表名> RENAME [TO] <新表名>;`
+
+  ```sql
+  ALTER TABLE tb_dept3 RENAME tb_dept4;
+  ```
+
+- 修改字段的数据类型`ALTER TABLE <表名> MODIFY <字段名> <数据类型>;`
+
+  ```sql
+  ALTER TABLE tm_dept1 MODIFY name VARCHAR(30);
+  ```
+
+- 修改字段名 `ALTER TABLE <表名> CHANGE <旧字段名> <新字段名> <新数据类型>;`
+
+  ```sql
+  ALTER TABLE tmp_dept1 CHANGE location loc VARCHAR(50);
+  ALTER TABLE tmp_dept1 CHANGE loc location VARCHAR(60);
+  ```
+
+- 添加字段名 `ALTER TABLE <表名> ADD <新字段名> <数据类型> [约束条件] [FIRST | AFTER 已存在的字段名];`
+
+  ```sql
+  - 添加无完整性约束条件
+  ALTER TABLE tb_dept1 ADD managerId INT(10);
+  
+  - 添加有完整性约束条件的字段
+  ALTER TABLE tb_dept1 ADD column1 VARCHAR(12) NOT NULL;
+  
+  - 在表的第一列添加一个字段
+  ALTER TABLE tb_dept1 ADD column2 INT(11) FIRST;
+  
+  - 在表的指定列后添加一个字段
+  ALTER TABLE tb_dept1 ADD column3 INT(11) AFTER name;
+  ```
+
+- 删除字段 `ALTER TABLE <表名> DROP <字段名>`
+
+  ```sql
+  ALTER TABLE tb_dept1 DROP column2;
+  ```
+
+- 修改字段的排列位置 `ALTER TABLE <表名> MODIFY <字段1> <数据类型> FIRST|AFTER <字段2>;`
+
+  ```sql
+  ALTER TABLE tb_dept1 MODIFY column1 VARCHAR(12) FIRST;
+  ALTERT TABLE tb_dept1 MODIFY column1 VARCHAR(12) AFTER location;
+  ```
+
+- 更改表的存储引擎 `ALTER TABLE <表名> ENGINE=<更改后的存储引擎名>;`
+
+  ```sql
+  ALTER TABLE tb_deptment3 ENGINE=MyISAM;
+  ```
+
+- 删除表的外键约束 `ALTER TABLE <表名> DROP FOREIGN KEY <外键约束名>;`
 
 ## 数据库概念
 
