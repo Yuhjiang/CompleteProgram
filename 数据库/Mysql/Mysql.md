@@ -408,4 +408,121 @@ CREATE TABLE tb_emp1
   - char处理速度比varchar快，但是浪费存储空间
   - 对于MyISAM引擎，推荐使用char代替varchar，提高检索速度
   - InnoDB引擎下，使用可变长度的数据类型，因为InnoDB数据表的存储格式不分固定长度和可变长度。
+- BLOB和TEXT
+  - BLOB是二进制字符串，主要存储图片、音频信息
+  - TEXT只能存储纯文本文件
+
+## 数据库查询
+
+### 字符串模糊匹配
+
+- `%`匹配任意长度的字符，包括零字符
+- `_`一次只能匹配任意一个字符
+
+### having和where的区别
+
+- where用在分组之前筛选记录，where排除的记录不再包括在分组中
+
+- having是在数据分组之后进行过滤来选择分组
+
+  ```sql
+  SELECT s_id, GROUP_CONCAT(f_name) AS names
+  FROM fruits
+  GROUP BY s_id HAVING COUNT(f_name) > 1;
+  ```
+
+### 连接查询
+
+#### 内连接查询
+
+内连接列出两张表中与连接条件相匹配的数据行，组成新纪录。双方都满足条件的记录才会出现在结果关系中。
+
+```sql
+SELECT suppliers.s_id, s_name, f_name, f_price
+FROM fruits, supplies
+WHERE fruits.s_id = suppliers.s_id;
+
+SELECT suppliers.s_id, s_name, f_name, f_price
+FROM fruits INNER JOIN supplies
+ON fruits.s_id = suppliers.s_id;
+```
+
+自连接（连接的表都是自己）
+
+```sql
+SELECT f1.f_id, f1.f_name
+FROM fruits AS f1, fruits AS f2
+WHERE f1.s_id == f2.s_id AND f2.f_id = 'a1';
+```
+
+#### 外连接查询
+
+- LEFT JOIN：返回包括左表中所有记录和右表中连接字段相等的记录
+
+  ```sql
+  SELECT customers.c_id, orders.o_num 
+  FROM customers LEFT JOIN orders 
+  ON customers.c_id = orders.c_id;
+  
+  +-------+-------+
+  | c_id  | o_num |
+  +-------+-------+
+  | 10001 | 30001 |
+  | 10003 | 30002 |
+  | 10001 | 30005 |
+  |  1004 |  NULL |
+  | 10002 |  NULL |
+  +-------+-------+
+  ```
+
+- RIGHT JOIN：返回包括右表中所有记录和左表中连接字段相等的记录
+
+  ```sql
+  SELECT customers.c_id, orders.o_num 
+  FROM customers RIGHT JOIN orders 
+  ON customers.c_id = orders.c_id;
+  
+  +-------+-------+
+  | c_id  | o_num |
+  +-------+-------+
+  | 10001 | 30001 |
+  | 10003 | 30002 |
+  |  NULL | 30003 |
+  |  NULL | 30004 |
+  | 10001 | 30005 |
+  +-------+-------+
+  ```
+
+- FULL JOIN：全连接，返回所有数据行
+
+  ```sql
+  SELECT customers.c_id, orders.o_num 
+  FROM customers LEFT JOIN orders 
+  ON customers.c_id = orders.c_id 
+  UNION 
+  SELECT customers.c_id, orders.o_num
+  FROM customers RIGHT JOIN orders 
+  ON customers.c_id = orders.c_id;
+  
+  +-------+-------+
+  | c_id  | o_num |
+  +-------+-------+
+  | 10001 | 30001 |
+  | 10003 | 30002 |
+  | 10001 | 30005 |
+  |  1004 |  NULL |
+  | 10002 |  NULL |
+  |  NULL | 30003 |
+  |  NULL | 30004 |
+  +-------+-------+
+  ```
+
+### UNION和UNION ALL区别
+
+- UNION ALL不会删除重复行，并且执行所需的资源少
+- UNION会自动删除重复的行
+
+
+
+
 
