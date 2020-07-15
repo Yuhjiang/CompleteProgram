@@ -522,7 +522,122 @@ WHERE f1.s_id == f2.s_id AND f2.f_id = 'a1';
 - UNION ALL不会删除重复行，并且执行所需的资源少
 - UNION会自动删除重复的行
 
+## 索引
 
+## 索引创建删除方式
 
+```sql
+CREATE TABLE table_name [col_name data_type] [UNIQUE|FULLTEXT|SPATIAL] [INDEX|KEY] [index_name] [col_name {length}] [ASC|DESC]
 
+ALTER TABLE table_name ADD [UNIQUE|FULLTEXT|SPATIAL] [INDEX|KEY] [index_name] (col_name[length], ..) [ASC|DESC]
+
+CREATE [UNIQUE|FULLTEXT|SPATIAL] [INDEX|KEY] [index_name] ON table_name (col_name[length], ...) [ASC | DESC]
+
+ALTER TABLE table_name DROP INDEX index_name
+
+DROP INDEX index_name ON table_name;
+```
+
+### 索引分类
+
+#### 普通索引和唯一索引
+
+- 普通索引和唯一索引：普通索引是Mysql的基本索引类型，允许在定义索引的列中插入重复值和空值。唯一索引的值必须唯一，但允许有空值。主键索引是特殊的唯一索引，不允许有空值
+
+- 创建表的时候创建索引
+
+  ```sql
+  CREATE TABLE book
+  (
+  	bookid INT NOT NULL,
+  	bookname VARCHAR(255) NOT NULL,
+  	year_publication YEAR NOT NULL,
+  	INDEX(year_publication)
+  )
+  
+  CREATE TABLE book
+  (
+  	id INT NOT NULL,
+  	name CHAR(30) NOT NULL,
+  	UNIQUE INDEX UniqIdx(id)
+  );
+  ```
+
+- 在已存在的表上创建索引
+
+  ```sql
+  ALTER TABLE book ADD INDEX BKnameIdx(bookname(30));
+  
+  ALTER TABLE book ADD UNIQUE INDEX UniqidIdx (bookId);
+  ```
+
+#### 单列索引和组合索引
+
+- 单列索引即一个索引只包含单个列，一个表可以有多个单列索引
+
+- 组合索引指在多个字段组合上创建的索引，只有在查询条件中使用了这些字段的左边字段时，索引才会被使用。使用组合索引遵循最左前缀集合
+
+- 创建表的时候创建索引
+
+  ```sql
+  CREATE TABLE t2
+  (
+    id INT NOT NULL,
+    name CHAR(50) NULL,
+    INDEX SingleIdx(name(20))
+  );
+  
+  CREATE TABLE t3
+  (
+    id INT NOT NULL,
+    name CHAR(30) NOT NULL,
+    INDEX MultiIdx(id, name(10))
+  );
+  ```
+
+- 在已存在的表上创建索引
+
+  ```sql
+  ALTER TABLE book ADD INDEX BkcmtIdx(comment(50));
+  
+  ALTER TABLE book ADD INDEX BkAuANDInfoIdx (authors(30), info(50));
+  ```
+
+#### 全文索引
+
+- 全文索引类型为FULLTEXT，在定义索引的列上支持值的全文查找，允许在这些索引列中插入重复值和空值。全文索引可以在CHAR，TEXT和VARCHAR类型的列上创建。只有M有ISAM支持全文索引
+
+- 创建表的时候创建索引
+
+  ```sql
+  CREATE TABLE t4
+  (
+    id INT NOT NULL,
+    name CHAR(30) NOT NULL,
+    info VARCHAR(255),
+    FULLTEXT INDEX FullTxtIdx(info)
+  );
+  ```
+
+- 在已存在的表上创建索引
+
+  ```sql
+  ALTER TABLE t6 ADD FULLTEXT INDEX infoFullIdx (info);
+  ```
+
+  
+
+#### 空间索引
+
+- 对空间数据类型的字段建立索引，创建空间索引的列必须声明为NOT NULL，只能在M y ISAM中使用
+
+- 创建表的时候创建索引
+
+  ```sql
+  CREATE TABLE t5
+  (
+    g GEOMETRY NOT NULL,
+    SPATIAL INDEX spatIdx(g)
+   ) ENGINE=MyISAM;
+  ```
 
