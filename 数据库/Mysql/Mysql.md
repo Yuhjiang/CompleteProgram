@@ -382,3 +382,30 @@ CREATE TABLE tb_emp1
 - VARCHAR(M)是长度可变字符串，M表示最大的列长度，VARCHAR最大实际长度由最长的行的大小和使用的字符集确定。例如定义了VARCHAR(50)，存储了10个字符时，实际存储的字符串为10个字符+1结束字符
 - TEXT保存非二进制字符串，适合文章内容，评论等
 - ENUM，其值为创建表时指定的枚举值 `字段名 ENUM('x', 'y', 'z')`ENUM列总有一个默认值，如果将ENUM列声明为NULL，NULL值则为该列第一个有效值，并且默认值为NULL，如果ENUM列被声明为NOT NULL，默认值为允许的值列表第一个元素。
+
+### 二进制字符串类型
+
+| 类型名称      | 存储要求        |
+| ------------- | --------------- |
+| BIT(M)        | 大约(M+7)/8字节 |
+| BINARY(M)     | M字节           |
+| VARBINARY(M)  | M+1字节         |
+| TINYBLOB(M)   | L+1字节，L<2^8  |
+| BLOB(M)       | L+2, L<2^16     |
+| MEDIUMBLOB(M) | L+3, L<2^24     |
+| LONGBLOB(M)   | L+4, L<2^32     |
+
+### 如何选择数据类型
+
+- 整数和浮点数
+  - 使用浮点数时，存入的数值会根据定义的小数位进行四舍五入，DOUBLE精度比FLOAT高
+- 浮点数和定点数
+  - 当长度一定的情况下，DOUBLE和FLOAT能比DECIMAL表示更大的数据范围，但由于浮点数四舍五入会有误差，精确度要求高的场景下选择DECIMAL
+  - DECIMAL在MySQL中是字符串存储的
+- CHAR和VARCHAR选择
+  - char是固定长度字符，VARCHAR是可变长度字符
+  - char会自动删除插入数据的尾部空格，varchar会保留尾部空格
+  - char处理速度比varchar快，但是浪费存储空间
+  - 对于MyISAM引擎，推荐使用char代替varchar，提高检索速度
+  - InnoDB引擎下，使用可变长度的数据类型，因为InnoDB数据表的存储格式不分固定长度和可变长度。
+
