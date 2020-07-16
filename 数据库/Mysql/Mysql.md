@@ -641,3 +641,77 @@ DROP INDEX index_name ON table_name;
    ) ENGINE=MyISAM;
   ```
 
+## 性能分析
+
+### EXPLAIN
+
+```sql
++----+-------------+--------+------------+------+---------------+------+---------+------+------+----------+-------+
+| id | select_type | table  | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra |
++----+-------------+--------+------------+------+---------------+------+---------+------+------+----------+-------+
+|  1 | SIMPLE      | fruits | NULL       | ALL  | NULL          | NULL | NULL    | NULL |    8 |   100.00 | NULL  |
++----+-------------+--------+------------+------+---------------+------+---------+------+------+----------+-------+
+```
+
+- id: SELECT标识符
+
+- select_type:
+
+  - SIMPLE: 简单查询，不包含连接查询和子查询
+  - PRIMARY：主查询或者是最外层的查询
+  - UNION：表示连接查询的第2个或后面的查询语句
+  - DEPENDENT UNION：连接查询中的第2个或后面的查询语句，取决于外面的查询
+  - UNION RESULT：连接查询的结果
+  - SUBQUERY：子查询中第1个query查询
+  - DEPENDENT SUBQUERY：子查询中第1个SELECT，取决于外面的查询
+  - DERIVED：到处表的SELECT
+
+- table：查询的表
+
+- type: 从最佳类型到最差类型
+
+  - system: 该表是仅有一行的系统表
+
+  - const: 数据表最多一个匹配行
+
+    ```sql
+     explain select * from fruits where f_id = 'a1';
+    +----+-------------+--------+------------+-------+------------------------+---------+---------+-------+------+----------+-------+
+    | id | select_type | table  | partitions | type  | possible_keys          | key     | key_len | ref   | rows | filtered | Extra |
+    +----+-------------+--------+------------+-------+------------------------+---------+---------+-------+------+----------+-------+
+    |  1 | SIMPLE      | fruits | NULL       | const | PRIMARY,index_id_price | PRIMARY | 40      | const |    1 |   100.00 | NULL  |
+    +----+-------------+--------+------------+-------+------------------------+---------+---------+-------+------+----------+-------+
+    ```
+
+  - eq_ref: 对于每个来自前面的表的行组合，从该表中读取一行。当一个索引的所有部分都在查询使用并且索引是UNIQUE或PRIMARY KEY时，可用这种类型
+
+  - ref: 对于来自前面z的表的任意行组合，将从该表中读取所有匹配的行。这种类型用于索引既不是UNIQUE也不是PRIMARY KEY的情况，或者查询中用了索引列的左子集
+
+  - ref_or_null: 连接类型同ref，但是可以搜索包含NULL的行
+
+  - index_merge: 使用了索引合并优化方法，key列包含了使用的索引的清单，key_len包含了使用的索引的最长的关键元素
+
+  - unique_subquery: 是一个索引查询函数，可以完全替代子查询
+
+    ```sql
+    value IN (SELECT primary key FROM single_table WHERE some_expr)
+    ```
+
+  - index_subquery: 类似unique_subquery，可以替换IN子查询，适合下列形式的子查询中非唯一索引
+
+    ```sql
+    value IN (SELECT key_column FROM single_table WHERE some_expr)
+    ```
+
+  - range: 只检索给定范围的行，使用一个索引选择行。key显示了使用哪个索引，key_len包含所有索引的最长关键元素
+
+  - index: 连接类型和ALL相同，但只扫描索引树
+
+  - ALL: 对于前面表的任意行组合，进行完整的表扫描
+
+- possible_keys: 指出Mysql能用哪个索引
+- key: 查询实际使用到的索引
+- key_len: Mysql选择索引字段按字节计算的长度
+- ref: 表示使用哪个列或常数与索引一起来查询
+- rows: Mysql在表中查询时必须检查的行数
+
