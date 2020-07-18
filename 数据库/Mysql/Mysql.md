@@ -298,6 +298,8 @@ CREATE TABLE tb_emp1
 - BLOB和TEXT
   - BLOB是二进制字符串，主要存储图片、音频信息
   - TEXT只能存储纯文本文件
+- timestamp和datetime
+  - 尽量使用timestamp存储，空间效率高于datetime
 
 ## 数据库查询
 
