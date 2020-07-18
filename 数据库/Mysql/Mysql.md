@@ -584,13 +584,13 @@ DROP INDEX index_name ON table_name;
 
   - index_merge: 使用了索引合并优化方法，key列包含了使用的索引的清单，key_len包含了使用的索引的最长的关键元素
 
-  - unique_subquery: 是一个索引查询函数，可以完全替代子查询
+  - unique_subquery: 是一个索引查询函数，可以完全替代子查询，在子查询中使用eq_ref
 
     ```sql
     value IN (SELECT primary key FROM single_table WHERE some_expr)
     ```
 
-  - index_subquery: 类似unique_subquery，可以替换IN子查询，适合下列形式的子查询中非唯一索引
+  - index_subquery: 类似unique_subquery，可以替换IN子查询，适合下列形式的子查询中非唯一索引，在子查询中使用ref
 
     ```sql
     value IN (SELECT key_column FROM single_table WHERE some_expr)
