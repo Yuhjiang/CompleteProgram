@@ -3,12 +3,10 @@
 ## Supervisor配置文件解析
 - `unix_http_server`: UNIX socket配置，是supervisor用来管理进程的接口
 - `inet_http_server`: supervisor Web服务器的配置，不需要Web服务器可以不开启
-- `supervisord`: supervisord 的基础配置，包括日志和pid的文职
+- `supervisord`: supervisord 的基础配置，包括日志和pid的位置
 - `rpcinterface:supervisor`: 用来配置RPC接口，supervisorctl通过这个RPC来连接socket
-- `supervisorctl`: supervisorctl命令配置，它配置的socket地址以及用户名密码应该和`unix_http_server`
-一致
-- `program:<程序名>`: 配置需要运行的程序启动命令，以及相关配置，如日志、环境变量、需要启动
-的进程数等
+- `supervisorctl`: supervisorctl命令配置，它配置的socket地址以及用户名密码应该和`unix_http_server`一致
+- `program:<程序名>`: 配置需要运行的程序启动命令，以及相关配置，如日志、环境变量、需要启动的进程数等
 
 ## Django、Flask&Tornado框架对比
 - Django：最全能的web开发框架，功能完备，可维护性高，开发速度快。但是使用笨重，性能一般
@@ -25,18 +23,14 @@
 - 认证组件、缓存、日志、邮件、分页、静态文件管理、消息框架、数据验证
 
 ## 列举Django中间件的方法，以及中间件的应用场景
-- Django的中间件是一个类，在请求的到来和结束后，django会根据自己的规则在合适的时机执行中间件
-中相应的方法
+- Django的中间件是一个类，在请求的到来和结束后，django会根据自己的规则在合适的时机执行中间件中相应的方法
 - 中间件在settings中的`MIDDLEWARE_CLASSES`变量配置
 - 中间件的方法
     - `process_request(self, request)`方法在请求到来时候调用
-    - `process_view(self, request, callback, callback_args, callback_kwargs)`在
-    本次将要执行的View函数被调用前调用本方法
+    - `process_view(self, request, callback, callback_args, callback_kwargs)`在本次将要执行的View函数被调用前调用本方法
     - `process_template_respose(self, request, resposne)`使用render()之后执行
-    - `process_exception(self, request, exception)`视图函数在抛出异常时调用，得到的
-    Exception参数是被抛出的异常实例。
-    - `process_response(self, request, response)`执行完视图函数后准备将数据返回给客户端前
-    被执行
+    - `process_exception(self, request, exception)`视图函数在抛出异常时调用，得到的Exception参数是被抛出的异常实例。
+    - `process_response(self, request, response)`执行完视图函数后准备将数据返回给客户端前被执行
 - 可以修改request和response对象的内容，在视图执行前做一些操作，判断浏览器来源，做一个拦截器
 - 可以判断浏览器的来源是PC还是手机
 - 可以做一个拦截器，一定时间内某个ip对网页第访问次数过多，可以加入黑名单拒绝服务
@@ -44,8 +38,7 @@
 ## 什么事FBV和CBV
 - FBV是`function base views`基于函数视图，CBV是`class base views`基于类的视图
 - FBV模式，URL匹配成功后，会直接执行对应的视图函数
-- CBV模式，服务端通过路由映射表匹配成功后，自动去找dispatch方法，然后通过dispatch反射的方式
-找到类中对应的方法执行。所有的类视图，都继承了View类，View类里有dispatch，负责分发。
+- CBV模式，服务端通过路由映射表匹配成功后，自动去找dispatch方法，然后通过dispatch反射的方式找到类中对应的方法执行。所有的类视图，都继承了View类，View类里有dispatch，负责分发。
 ```python
 def dispatch(self, request, *args, **kwargs):
     # Try to dispatch to the right method; if a method doesn't exist,
@@ -62,8 +55,7 @@ def dispatch(self, request, *args, **kwargs):
     - DetailView：展示某个具体的对象或者一组对象
     
 ## Django的request的方法是什么时候创建的？
-- 请求一个页面的时候，Django创建了一个HttpRequest对象，包含了request数据。Django会加载对应
-的视图，然后把request作为第一个参数传递到视图函数。
+- 请求一个页面的时候，Django创建了一个HttpRequest对象，包含了request数据。Django会加载对应的视图，然后把request作为第一个参数传递到视图函数。
 - HttpRequest对象的内容
     - scheme：请求的协议，通常是http or https
     - body: 原始的请求body数据，为字节字符串类型，可以用于自定义的转换方式比如图片，xml格式
@@ -232,7 +224,7 @@ Entry.objects.extra(where=['headline=%s'], params=['Lennon'])
 - only（*fields): 只获取某些字段的值，不延迟加载，其他的值会延迟加载
 - using(alias): 指定使用的数据库
 
-## Django中三种sql语句的方法
+## Django中三种原生sql语句的方法
 1. 使用extra
 ```python
 Book.objects.filter(publisher__name='XXX').extra(where=['price>50'])
@@ -396,24 +388,18 @@ class MyModel(models.Model):
 
 ## Django中csrf_token机制
 - Django使用中间件`django.middleware.csrf.CsrfViewMiddleware`来完成跨站请求伪攻击的防御
-- 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个
-视图取消csrf_token校验
-- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次
-都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否
+- 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个视图取消csrf_token校验
+- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否
 一致。
-- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，
-处理请求的时候，中间件会验证两个csrftoken是否一致。
+- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，处理请求的时候，中间件会验证两个csrftoken是否一致。
 
 ## Django信号
 
 ### 常用信号：
-- django.db.models.signals.pre_save & django.db.models.signals.post_save: ORM模型save()
-方法调用前后发送信号
-- django.db.models.signals.pre_delete & django.db.models.signals.post_delete: delete()
-方法调用前后发送信号
+- django.db.models.signals.pre_save & django.db.models.signals.post_save: ORM模型save()方法调用前后发送信号
+- django.db.models.signals.pre_delete & django.db.models.signals.post_delete: delete()方法调用前后发送信号
 - django.db.models.signals.m2m_changed: 多对多字段被修改时发送信号
-- django.core.signals.request_started & django.core.signals.request_finished接收
-和关闭HTTP请求时发送信号
+- django.core.signals.request_started & django.core.signals.request_finished接收和关闭HTTP请求时发送信号
 
 ### 监听信号
 - `Signal.connect(receiver, sender=None, weak=True, dispath_uid=None)[source]`
@@ -451,8 +437,7 @@ from django.core.signals import request_finished
 request_finished.connect(my_callback, dispatch_uid='my_unique_identifier')
 ```
 ### 自定义信号
-类原型 Signal(providing_args=list)[source], providing_args参数是一个列表，由信号提供给
-监听者的参数的名称组成
+类原型 Signal(providing_args=list)[source], providing_args参数是一个列表，由信号提供给监听者的参数的名称组成
 ```python
 import django.dispatch
 
@@ -511,17 +496,14 @@ python manage.py migrate --fake-initial
 ```
 
 ## Django migrate --fake-initial和 --fake的区别
-- fake-initial 可以跳过app的初始化，如果app里的模型对应的表已经创建好，初始化项目的时候
-使用--fake-initial。这个命令会跳过创建表的过程，但是对已存在表的修改会被执行。
-- fake 告诉Django标记某次迁移已经被应用到数据库中，不会运行sql语句去改动表。当有人工修改
-表结构时，可以用fake跳过这次修改
+- fake-initial 可以跳过app的初始化，如果app里的模型对应的表已经创建好，初始化项目的时候使用--fake-initial。这个命令会跳过创建表的过程，但是对已存在表的修改会被执行。
+- fake 告诉Django标记某次迁移已经被应用到数据库中，不会运行sql语句去改动表。当有人工修改表结构时，可以用fake跳过这次修改
 
 ## ORM和原生SQL的优缺点
 ### 1. ORM
 优点：
 使用ORM最大的优点是快速开发，集中在业务上而不是数据库上
-- 隐藏了数据访问的细节，通用数据库交互简单易行，避免了不规范，冗余，风格不一致的SQL语句，避免
-sql语句上的bug
+- 隐藏了数据访问的细节，通用数据库交互简单易行，避免了不规范，冗余，风格不一致的SQL语句，避免sql语句上的bug
 - 将数据库表和对象模型关联，只需针对相关的对象模型进行编码，无法考虑对象模型和数据表之间的转化
 - 方便数据库的迁移，不需要修改对象模型，只需要修改数据库的配置
 缺点：
@@ -554,8 +536,7 @@ contenttypes是Django内置的一个应用，追踪项目中所有的app和model
 | 15 | blog                  | category           |
 | 21 | blog                  | comment            |
 ```
-比如一个model中，有一个ForeignKey需要关联多个表的，正常情况下，一个ForeignKey只能和一张表
-做关联，使用contenttypes中提供的特殊字段GenericForeignKey，可以解决上述的问题
+比如一个model中，有一个ForeignKey需要关联多个表的，正常情况下，一个ForeignKey只能和一张表做关联，使用contenttypes中提供的特殊字段GenericForeignKey，可以解决上述的问题
 - 在model中定义ForeignKey字段，关联到ContentType表，通常这个字段命名为'content_type'
 - 在model中定义PositiveIntegerField字段，用来存储关联表中的主键，通常命名为'object_id'
 - 在model中定义GenericForeignKey字段，传入上述两个字段的名字

@@ -299,4 +299,5 @@ select * from tab_with_index where id = 1;
 - WHERE里使用了LIKE和REGEXP，只有在搜索模版的第一个字符不是通配符的情况下才能使用索引
 - ORDER BY 排序条件不是一个查询条件表达式的情况下才能使用索引
 - 使用OR的情况下可能会失效
+- 数据类型不匹配，需要mysql隐式转换的情况
 
