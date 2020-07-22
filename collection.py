@@ -12,6 +12,7 @@ def generate_markdown(filename):
             for file in files:
                 with open(os.path.join(root, file), 'r') as read:
                     f.write(read.read())
+                    f.write('\n')
 
 
 def _get_ignore_dirs_files(special=None):
