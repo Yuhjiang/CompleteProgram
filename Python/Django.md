@@ -14,10 +14,12 @@
 - Flask：自由、灵活、扩展性高，有很多第三方插件。
 
 ## Django的生命周期
-- 用户在浏览器中输入url后，浏览器会生成请求头和请求体，发送到Django后端
-- url经过Django的wsgi，中间件，最后通过路由映射表，匹配对应的视图函数
-- 视图函数根据请求返回相应的数据，Django把数据包装成HTTP的响应返回给前段
-- 前段渲染数据
+- wsgi封装请求数据然后交给框架
+- 中间件，对请求进行校验，添加额外的数据
+- 路由匹配
+- 视图函数
+- 中间件，对响应数据处理
+- wsgi封装响应返回给客户端
 
 ## Django的内置组件
 - 认证组件、缓存、日志、邮件、分页、静态文件管理、消息框架、数据验证
@@ -34,6 +36,50 @@
 - 可以修改request和response对象的内容，在视图执行前做一些操作，判断浏览器来源，做一个拦截器
 - 可以判断浏览器的来源是PC还是手机
 - 可以做一个拦截器，一定时间内某个ip对网页第访问次数过多，可以加入黑名单拒绝服务
+- ![中间件执行顺序](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9tbWJpei5xcGljLmNuL21tYml6X3BuZy9idWFGTEZLaWNSb0M5R3pCZWliQXExVVBKMFpsM3Zsd0RpYXM2dEhhN2x5aWFKaWFmWldPbmZsMWZPUVBNT2J2SndUWEF6a1h0UjJnalBZb0JmaEdJRkRYMWJnLzY0MA?x-oss-process=image/format,png)
+
+### 常用中间件举例
+- SecurityMiddleware: XXS攻击防御，HTTPS连接相关的设置
+- SessionMiddleware: session会话支持
+- CommonMiddleware: 支持对URL的重写
+    - APPEND_SLASH: 设置为True时，如果url没有以斜杆结尾并且找不到url配置，会形成一个斜线
+    结尾的新url
+    - PREPEND_WWW: 设置为True时，缺少www.的URL会被重定向到相同的但是以www.开头的URL
+- AuthenticationMiddleware: 在视图函数执行前，向每个接收到的user对象添加到HttpRequest对象，
+表示当前登录的用户（会存入request.user)
+- MessageMiddleware: 开启基于cookie和会话的消息支持
+- XFrameOptionsMiddleware: 跨站请求伪造攻击中的点击攻击，通过识别 X-Frame-Options请求头
+的信息，比对是否是同源请求。
+- UpdateCacheMiddleware/FetchFromCacheMiddleware: 全站缓存
+
+### 自定义中间件
+1. 基于函数的
+```python
+def simple_middleware(get_response):
+    # One-time configuration and initialization.
+    def middleware(request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+        response = get_response(request)
+        # Code to be executed for each request/response after
+        # the view is called.
+        return response
+    return middleware
+```
+2. 基于类的(Django3.0开始，逐渐弃用process_request, process_response)
+```python
+class SimpleMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # One-time configuration and initialization.
+    def __call__(self, request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+        response = self.get_response(request)
+        # Code to be executed for each request/response after
+        # the view is called.
+        return response
+```
 
 ## 什么事FBV和CBV
 - FBV是`function base views`基于函数视图，CBV是`class base views`基于类的视图
@@ -76,6 +122,16 @@ def dispatch(self, request, *args, **kwargs):
     - session: 中间件SessionMiddleware添加的，可读可写的类字典对象
     - site: 中间件CurrentSiteMiddleware，Site或RequestSite的实例，由get_current_site返回
     - user: AuthenticationMiddleware，一个AUTH_USER_MODEL指定的类的实例，代表了登录的用户
+- Request对象在WSGIHandler里创建，将environ参数封装成request
+```python
+class WSGIHandler(base.BaseHandler):
+    def __call__(self, environ, start_response):
+        set_script_prefix(get_script_name(environ))
+        signals.request_started.send(sender=self.__class__, environ=environ)
+        request = self.request_class(environ)
+        response = self.get_response(request)
+        ...
+```
     
 ## 给CBV的类方法增加装饰器
 1. 在指定的方法上添加装饰器
@@ -384,7 +440,8 @@ class MyModel(models.Model):
 - Django使用中间件`django.middleware.csrf.CsrfViewMiddleware`来完成跨站请求伪攻击的防御
 - 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个视图取消csrf_token校验
 - 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否一致。
-- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，处理请求的时候，中间件会验证两个csrftoken是否一致。
+- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，处理请求的时候，中间件会验证两个csrftoken是否一致。一致。(保存分两种，settings里设置了CSRF_USE_SESSIONS，就会从session里获取，否则就从
+cookies里获取)
 
 ## Django信号
 
@@ -553,3 +610,85 @@ class Coupon(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 ```
+
+## Django rest framework框架中有哪些组件
+- 序列化组建serializer，对queryset序列化和对请求数据格式校验
+- routers进行路由分发
+```python
+from rest_framework import routers
+
+router = routers.SimpleRouter()
+router.register(r'users', UserViewSet)
+router.register(r'accounts', AccountViewSet)
+urlpatterns = router.urls
+```
+- 认证组建，写一个类注册到认证类，在authticate里编写逻辑
+- 权限组件，写一个类注册到权限类，在has_permission里编写验证逻辑
+```python
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+class ExampleView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        content = {
+            'user': unicode(request.user),  # `django.contrib.auth.User` instance.
+            'auth': unicode(request.auth),  # None
+        }
+        return Response(content)
+```
+- 频率限制，写一个类注册到频率类，在allow_request/wait中编写认证逻辑
+- 解析器，选择对数据解析的类
+- 渲染器
+- 分页
+- 版本控制
+- 缓存
+```python
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
+
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import viewsets
+
+
+class UserViewSet(viewsets.ViewSet):
+
+    # Cache requested url for each user for 2 hours
+    @method_decorator(cache_page(60*60*2))
+    @method_decorator(vary_on_cookie)
+    def list(self, request, format=None):
+        content = {
+            'user_feed': request.user.get_user_feed()
+        }
+        return Response(content)
+
+
+class PostView(APIView):
+
+    # Cache page for the requested url
+    @method_decorator(cache_page(60*60*2))
+    def get(self, request, format=None):
+        content = {
+            'title': 'Post title',
+            'body': 'Post content'
+        }
+        return Response(content)
+```
+
+## django rest framework框架中的视图都可以继承哪些类
+- View(object)
+- APIView(View) 重新封装了request
+- GenericView(views.APIView)封装了get_queryset,get_serializer
+- GenericViewSet(ViewSetMixin, generics.GenericAPIView)重新了as_view
+- ModelViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, GenericViewSet))
+
+## django rest framework框架的认证流程
+- 用户请求走进来后,走APIView,初始化了默认的认证方法
+- 走到APIView的dispatch方法,initial方法调用了request.user
+- 如果我们配置了认证类,走我们自己认证类中的authentication方法
