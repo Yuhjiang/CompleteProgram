@@ -191,8 +191,7 @@ b = Book.objects.select_related('author__hometown').get(id=4)
 ```
 - prefetch_related(*fields): 解决多对多问题，这个用法比较复杂，参考官方文档：
 [prefetch-related](https://docs.djangoproject.com/en/3.0/ref/models/querysets/#prefetch-related)
-- extra(select=None, where=None, params=None, tales=None, order_by=None, select_params=None):
-用户执行复杂的sql语句
+- extra(select=None, where=None, params=None, tales=None, order_by=None, select_params=None):用户执行复杂的sql语句
 ```python
 qs.extra(
     select={'val': 'select col from sometable where othercol = %s'},
@@ -247,8 +246,7 @@ cursor.fetchall()
 ```
 
 ## F和Q的作用
-- F: 操作表中的某一列值，允许Django不用获取对象放到内存中再对字段进行操作，而是直接执行原生
-sql语句操作。
+- F: 操作表中的某一列值，允许Django不用获取对象放到内存中再对字段进行操作，而是直接执行原生sql语句操作。
 ```python
 from django.db.models import F
 Book.objects.update(price=F('price')+20)
@@ -260,16 +258,14 @@ Book.objects.filter(Q(title__icontains=keyword) | Q(ip=keyword))
 ```
 
 ## Django ORM批量操作符
-- bulk_create(): 需要注意，save()方法不会被调用，pre_save和post_save信号不会被发送。自增
-字段也不会自增，无法创建多对多关系。
+- bulk_create(): 需要注意，save()方法不会被调用，pre_save和post_save信号不会被发送。自增字段也不会自增，无法创建多对多关系。
 ```python
 Entry.objects.bulk_create([
     Entry(headline='This is a test'),
     Entry(headline='This is only a test'),
 ])
 ```
-- bulk_update(): 无法更新主键，save()方法不会被调用，pre_save和post_save信号不会发送，
-如果更新的内容有重复，只有第一个会执行。
+- bulk_update(): 无法更新主键，save()方法不会被调用，pre_save和post_save信号不会发送，如果更新的内容有重复，只有第一个会执行。
 ```python
 objs = [
     Entry.objects.create(headline='Entry 1'),
@@ -281,8 +277,7 @@ Entry.objects.bulk_update(objs, ['headline'])
 ```
 
 ## FORM和ModelForm的作用
-- Form是自己定义的表单结构，需要继承Django的forms.Form类，然后像Model类一样，定义字段。保存数据
-的时候，需要从POST里手动取出表单数据
+- Form是自己定义的表单结构，需要继承Django的forms.Form类，然后像Model类一样，定义字段。保存数据的时候，需要从POST里手动取出表单数据
 ```python
 from django import forms
 class Loginform(forms.Form):
@@ -305,8 +300,7 @@ class Loginform(forms.Form):
         "invalid": "格式错误"}
     )
 ```
-- ModelForm是可以使用定义好的Model类，需要继承forms.ModelForm，然后在Meta类里，包含表单
-要现实的字段，提示信息，错误信息等内容。保存数据时，不用手工去取数据，直接save即可
+- ModelForm是可以使用定义好的Model类，需要继承forms.ModelForm，然后在Meta类里，包含表单要现实的字段，提示信息，错误信息等内容。保存数据时，不用手工去取数据，直接save即可
 ```python
 from django.forms import ModelForm
 class BookModelForm(ModelForm):
@@ -389,8 +383,7 @@ class MyModel(models.Model):
 ## Django中csrf_token机制
 - Django使用中间件`django.middleware.csrf.CsrfViewMiddleware`来完成跨站请求伪攻击的防御
 - 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个视图取消csrf_token校验
-- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否
-一致。
+- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否一致。
 - 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，处理请求的时候，中间件会验证两个csrftoken是否一致。
 
 ## Django信号
