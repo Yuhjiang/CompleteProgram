@@ -12,10 +12,8 @@
     - child: 当前节点的子节点引用
     
 ## Zookeeper的Watch机制
-1. 客户端调用getData方法，服务端收到请求，返回节点数据，并在对应的hash表里插入被watch的Znode
-路径，以及watcher列表
-2. 当被watch的znode被删除时，服务端会查找哈希表，找到znode对应的所有watcher，异步通知客户端，
-并且删除哈希表中对应的key-value
+1. 客户端调用getData方法，服务端收到请求，返回节点数据，并在对应的hash表里插入被watch的Znode路径，以及watcher列表
+2. 当被watch的znode被删除时，服务端会查找哈希表，找到znode对应的所有watcher，异步通知客户端，并且删除哈希表中对应的key-value
 
 ## Zookeeper如何故障恢复
 ![zookeeper集群结构](https://user-gold-cdn.xitu.io/2018/5/22/16385a1ee4301aa0?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)

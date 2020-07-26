@@ -3,12 +3,10 @@
 ## Supervisor配置文件解析
 - `unix_http_server`: UNIX socket配置，是supervisor用来管理进程的接口
 - `inet_http_server`: supervisor Web服务器的配置，不需要Web服务器可以不开启
-- `supervisord`: supervisord 的基础配置，包括日志和pid的文职
+- `supervisord`: supervisord 的基础配置，包括日志和pid的位置
 - `rpcinterface:supervisor`: 用来配置RPC接口，supervisorctl通过这个RPC来连接socket
-- `supervisorctl`: supervisorctl命令配置，它配置的socket地址以及用户名密码应该和`unix_http_server`
-一致
-- `program:<程序名>`: 配置需要运行的程序启动命令，以及相关配置，如日志、环境变量、需要启动
-的进程数等
+- `supervisorctl`: supervisorctl命令配置，它配置的socket地址以及用户名密码应该和`unix_http_server`一致
+- `program:<程序名>`: 配置需要运行的程序启动命令，以及相关配置，如日志、环境变量、需要启动的进程数等
 
 ## Django、Flask&Tornado框架对比
 - Django：最全能的web开发框架，功能完备，可维护性高，开发速度快。但是使用笨重，性能一般
@@ -16,36 +14,77 @@
 - Flask：自由、灵活、扩展性高，有很多第三方插件。
 
 ## Django的生命周期
-- 用户在浏览器中输入url后，浏览器会生成请求头和请求体，发送到Django后端
-- url经过Django的wsgi，中间件，最后通过路由映射表，匹配对应的视图函数
-- 视图函数根据请求返回相应的数据，Django把数据包装成HTTP的响应返回给前段
-- 前段渲染数据
+- wsgi封装请求数据然后交给框架
+- 中间件，对请求进行校验，添加额外的数据
+- 路由匹配
+- 视图函数
+- 中间件，对响应数据处理
+- wsgi封装响应返回给客户端
 
 ## Django的内置组件
 - 认证组件、缓存、日志、邮件、分页、静态文件管理、消息框架、数据验证
 
 ## 列举Django中间件的方法，以及中间件的应用场景
-- Django的中间件是一个类，在请求的到来和结束后，django会根据自己的规则在合适的时机执行中间件
-中相应的方法
+- Django的中间件是一个类，在请求的到来和结束后，django会根据自己的规则在合适的时机执行中间件中相应的方法
 - 中间件在settings中的`MIDDLEWARE_CLASSES`变量配置
 - 中间件的方法
     - `process_request(self, request)`方法在请求到来时候调用
-    - `process_view(self, request, callback, callback_args, callback_kwargs)`在
-    本次将要执行的View函数被调用前调用本方法
+    - `process_view(self, request, callback, callback_args, callback_kwargs)`在本次将要执行的View函数被调用前调用本方法
     - `process_template_respose(self, request, resposne)`使用render()之后执行
-    - `process_exception(self, request, exception)`视图函数在抛出异常时调用，得到的
-    Exception参数是被抛出的异常实例。
-    - `process_response(self, request, response)`执行完视图函数后准备将数据返回给客户端前
-    被执行
+    - `process_exception(self, request, exception)`视图函数在抛出异常时调用，得到的Exception参数是被抛出的异常实例。
+    - `process_response(self, request, response)`执行完视图函数后准备将数据返回给客户端前被执行
 - 可以修改request和response对象的内容，在视图执行前做一些操作，判断浏览器来源，做一个拦截器
 - 可以判断浏览器的来源是PC还是手机
 - 可以做一个拦截器，一定时间内某个ip对网页第访问次数过多，可以加入黑名单拒绝服务
+- ![中间件执行顺序](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9tbWJpei5xcGljLmNuL21tYml6X3BuZy9idWFGTEZLaWNSb0M5R3pCZWliQXExVVBKMFpsM3Zsd0RpYXM2dEhhN2x5aWFKaWFmWldPbmZsMWZPUVBNT2J2SndUWEF6a1h0UjJnalBZb0JmaEdJRkRYMWJnLzY0MA?x-oss-process=image/format,png)
+
+### 常用中间件举例
+- SecurityMiddleware: XXS攻击防御，HTTPS连接相关的设置
+- SessionMiddleware: session会话支持
+- CommonMiddleware: 支持对URL的重写
+    - APPEND_SLASH: 设置为True时，如果url没有以斜杆结尾并且找不到url配置，会形成一个斜线
+    结尾的新url
+    - PREPEND_WWW: 设置为True时，缺少www.的URL会被重定向到相同的但是以www.开头的URL
+- AuthenticationMiddleware: 在视图函数执行前，向每个接收到的user对象添加到HttpRequest对象，
+表示当前登录的用户（会存入request.user)
+- MessageMiddleware: 开启基于cookie和会话的消息支持
+- XFrameOptionsMiddleware: 跨站请求伪造攻击中的点击攻击，通过识别 X-Frame-Options请求头
+的信息，比对是否是同源请求。
+- UpdateCacheMiddleware/FetchFromCacheMiddleware: 全站缓存
+
+### 自定义中间件
+1. 基于函数的
+```python
+def simple_middleware(get_response):
+    # One-time configuration and initialization.
+    def middleware(request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+        response = get_response(request)
+        # Code to be executed for each request/response after
+        # the view is called.
+        return response
+    return middleware
+```
+2. 基于类的(Django3.0开始，逐渐弃用process_request, process_response)
+```python
+class SimpleMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # One-time configuration and initialization.
+    def __call__(self, request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+        response = self.get_response(request)
+        # Code to be executed for each request/response after
+        # the view is called.
+        return response
+```
 
 ## 什么事FBV和CBV
 - FBV是`function base views`基于函数视图，CBV是`class base views`基于类的视图
 - FBV模式，URL匹配成功后，会直接执行对应的视图函数
-- CBV模式，服务端通过路由映射表匹配成功后，自动去找dispatch方法，然后通过dispatch反射的方式
-找到类中对应的方法执行。所有的类视图，都继承了View类，View类里有dispatch，负责分发。
+- CBV模式，服务端通过路由映射表匹配成功后，自动去找dispatch方法，然后通过dispatch反射的方式找到类中对应的方法执行。所有的类视图，都继承了View类，View类里有dispatch，负责分发。
 ```python
 def dispatch(self, request, *args, **kwargs):
     # Try to dispatch to the right method; if a method doesn't exist,
@@ -62,8 +101,7 @@ def dispatch(self, request, *args, **kwargs):
     - DetailView：展示某个具体的对象或者一组对象
     
 ## Django的request的方法是什么时候创建的？
-- 请求一个页面的时候，Django创建了一个HttpRequest对象，包含了request数据。Django会加载对应
-的视图，然后把request作为第一个参数传递到视图函数。
+- 请求一个页面的时候，Django创建了一个HttpRequest对象，包含了request数据。Django会加载对应的视图，然后把request作为第一个参数传递到视图函数。
 - HttpRequest对象的内容
     - scheme：请求的协议，通常是http or https
     - body: 原始的请求body数据，为字节字符串类型，可以用于自定义的转换方式比如图片，xml格式
@@ -84,6 +122,16 @@ def dispatch(self, request, *args, **kwargs):
     - session: 中间件SessionMiddleware添加的，可读可写的类字典对象
     - site: 中间件CurrentSiteMiddleware，Site或RequestSite的实例，由get_current_site返回
     - user: AuthenticationMiddleware，一个AUTH_USER_MODEL指定的类的实例，代表了登录的用户
+- Request对象在WSGIHandler里创建，将environ参数封装成request
+```python
+class WSGIHandler(base.BaseHandler):
+    def __call__(self, environ, start_response):
+        set_script_prefix(get_script_name(environ))
+        signals.request_started.send(sender=self.__class__, environ=environ)
+        request = self.request_class(environ)
+        response = self.get_response(request)
+        ...
+```
     
 ## 给CBV的类方法增加装饰器
 1. 在指定的方法上添加装饰器
@@ -199,8 +247,7 @@ b = Book.objects.select_related('author__hometown').get(id=4)
 ```
 - prefetch_related(*fields): 解决多对多问题，这个用法比较复杂，参考官方文档：
 [prefetch-related](https://docs.djangoproject.com/en/3.0/ref/models/querysets/#prefetch-related)
-- extra(select=None, where=None, params=None, tales=None, order_by=None, select_params=None):
-用户执行复杂的sql语句
+- extra(select=None, where=None, params=None, tales=None, order_by=None, select_params=None):用户执行复杂的sql语句
 ```python
 qs.extra(
     select={'val': 'select col from sometable where othercol = %s'},
@@ -232,7 +279,7 @@ Entry.objects.extra(where=['headline=%s'], params=['Lennon'])
 - only（*fields): 只获取某些字段的值，不延迟加载，其他的值会延迟加载
 - using(alias): 指定使用的数据库
 
-## Django中三种sql语句的方法
+## Django中三种原生sql语句的方法
 1. 使用extra
 ```python
 Book.objects.filter(publisher__name='XXX').extra(where=['price>50'])
@@ -255,8 +302,7 @@ cursor.fetchall()
 ```
 
 ## F和Q的作用
-- F: 操作表中的某一列值，允许Django不用获取对象放到内存中再对字段进行操作，而是直接执行原生
-sql语句操作。
+- F: 操作表中的某一列值，允许Django不用获取对象放到内存中再对字段进行操作，而是直接执行原生sql语句操作。
 ```python
 from django.db.models import F
 Book.objects.update(price=F('price')+20)
@@ -268,16 +314,14 @@ Book.objects.filter(Q(title__icontains=keyword) | Q(ip=keyword))
 ```
 
 ## Django ORM批量操作符
-- bulk_create(): 需要注意，save()方法不会被调用，pre_save和post_save信号不会被发送。自增
-字段也不会自增，无法创建多对多关系。
+- bulk_create(): 需要注意，save()方法不会被调用，pre_save和post_save信号不会被发送。自增字段也不会自增，无法创建多对多关系。
 ```python
 Entry.objects.bulk_create([
     Entry(headline='This is a test'),
     Entry(headline='This is only a test'),
 ])
 ```
-- bulk_update(): 无法更新主键，save()方法不会被调用，pre_save和post_save信号不会发送，
-如果更新的内容有重复，只有第一个会执行。
+- bulk_update(): 无法更新主键，save()方法不会被调用，pre_save和post_save信号不会发送，如果更新的内容有重复，只有第一个会执行。
 ```python
 objs = [
     Entry.objects.create(headline='Entry 1'),
@@ -289,8 +333,7 @@ Entry.objects.bulk_update(objs, ['headline'])
 ```
 
 ## FORM和ModelForm的作用
-- Form是自己定义的表单结构，需要继承Django的forms.Form类，然后像Model类一样，定义字段。保存数据
-的时候，需要从POST里手动取出表单数据
+- Form是自己定义的表单结构，需要继承Django的forms.Form类，然后像Model类一样，定义字段。保存数据的时候，需要从POST里手动取出表单数据
 ```python
 from django import forms
 class Loginform(forms.Form):
@@ -313,8 +356,7 @@ class Loginform(forms.Form):
         "invalid": "格式错误"}
     )
 ```
-- ModelForm是可以使用定义好的Model类，需要继承forms.ModelForm，然后在Meta类里，包含表单
-要现实的字段，提示信息，错误信息等内容。保存数据时，不用手工去取数据，直接save即可
+- ModelForm是可以使用定义好的Model类，需要继承forms.ModelForm，然后在Meta类里，包含表单要现实的字段，提示信息，错误信息等内容。保存数据时，不用手工去取数据，直接save即可
 ```python
 from django.forms import ModelForm
 class BookModelForm(ModelForm):
@@ -396,24 +438,18 @@ class MyModel(models.Model):
 
 ## Django中csrf_token机制
 - Django使用中间件`django.middleware.csrf.CsrfViewMiddleware`来完成跨站请求伪攻击的防御
-- 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个
-视图取消csrf_token校验
-- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次
-都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否
-一致。
-- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，
-处理请求的时候，中间件会验证两个csrftoken是否一致。
+- 有两个装饰器`@csrf_protect`单独为某个视图设置csrf_token校验， `@csrf_exempt`单独为某个视图取消csrf_token校验
+- 使用Django的template时，页面的表单里会有hidden的csrf_token，这个值是服务器端生成，每次都不一样的随机值，用户提交表单的时候，中间件会校验表单数据里的csrf_token和保存的是否一致。
+- 在返回有表单的页面的时，cookie里会更新一个csrftoken字段，页面的表单里也有一个相同的csrftoken，处理请求的时候，中间件会验证两个csrftoken是否一致。一致。(保存分两种，settings里设置了CSRF_USE_SESSIONS，就会从session里获取，否则就从
+cookies里获取)
 
 ## Django信号
 
 ### 常用信号：
-- django.db.models.signals.pre_save & django.db.models.signals.post_save: ORM模型save()
-方法调用前后发送信号
-- django.db.models.signals.pre_delete & django.db.models.signals.post_delete: delete()
-方法调用前后发送信号
+- django.db.models.signals.pre_save & django.db.models.signals.post_save: ORM模型save()方法调用前后发送信号
+- django.db.models.signals.pre_delete & django.db.models.signals.post_delete: delete()方法调用前后发送信号
 - django.db.models.signals.m2m_changed: 多对多字段被修改时发送信号
-- django.core.signals.request_started & django.core.signals.request_finished接收
-和关闭HTTP请求时发送信号
+- django.core.signals.request_started & django.core.signals.request_finished接收和关闭HTTP请求时发送信号
 
 ### 监听信号
 - `Signal.connect(receiver, sender=None, weak=True, dispath_uid=None)[source]`
@@ -451,8 +487,7 @@ from django.core.signals import request_finished
 request_finished.connect(my_callback, dispatch_uid='my_unique_identifier')
 ```
 ### 自定义信号
-类原型 Signal(providing_args=list)[source], providing_args参数是一个列表，由信号提供给
-监听者的参数的名称组成
+类原型 Signal(providing_args=list)[source], providing_args参数是一个列表，由信号提供给监听者的参数的名称组成
 ```python
 import django.dispatch
 
@@ -511,17 +546,14 @@ python manage.py migrate --fake-initial
 ```
 
 ## Django migrate --fake-initial和 --fake的区别
-- fake-initial 可以跳过app的初始化，如果app里的模型对应的表已经创建好，初始化项目的时候
-使用--fake-initial。这个命令会跳过创建表的过程，但是对已存在表的修改会被执行。
-- fake 告诉Django标记某次迁移已经被应用到数据库中，不会运行sql语句去改动表。当有人工修改
-表结构时，可以用fake跳过这次修改
+- fake-initial 可以跳过app的初始化，如果app里的模型对应的表已经创建好，初始化项目的时候使用--fake-initial。这个命令会跳过创建表的过程，但是对已存在表的修改会被执行。
+- fake 告诉Django标记某次迁移已经被应用到数据库中，不会运行sql语句去改动表。当有人工修改表结构时，可以用fake跳过这次修改
 
 ## ORM和原生SQL的优缺点
 ### 1. ORM
 优点：
 使用ORM最大的优点是快速开发，集中在业务上而不是数据库上
-- 隐藏了数据访问的细节，通用数据库交互简单易行，避免了不规范，冗余，风格不一致的SQL语句，避免
-sql语句上的bug
+- 隐藏了数据访问的细节，通用数据库交互简单易行，避免了不规范，冗余，风格不一致的SQL语句，避免sql语句上的bug
 - 将数据库表和对象模型关联，只需针对相关的对象模型进行编码，无法考虑对象模型和数据表之间的转化
 - 方便数据库的迁移，不需要修改对象模型，只需要修改数据库的配置
 缺点：
@@ -554,8 +586,7 @@ contenttypes是Django内置的一个应用，追踪项目中所有的app和model
 | 15 | blog                  | category           |
 | 21 | blog                  | comment            |
 ```
-比如一个model中，有一个ForeignKey需要关联多个表的，正常情况下，一个ForeignKey只能和一张表
-做关联，使用contenttypes中提供的特殊字段GenericForeignKey，可以解决上述的问题
+比如一个model中，有一个ForeignKey需要关联多个表的，正常情况下，一个ForeignKey只能和一张表做关联，使用contenttypes中提供的特殊字段GenericForeignKey，可以解决上述的问题
 - 在model中定义ForeignKey字段，关联到ContentType表，通常这个字段命名为'content_type'
 - 在model中定义PositiveIntegerField字段，用来存储关联表中的主键，通常命名为'object_id'
 - 在model中定义GenericForeignKey字段，传入上述两个字段的名字
@@ -579,3 +610,85 @@ class Coupon(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 ```
+
+## Django rest framework框架中有哪些组件
+- 序列化组建serializer，对queryset序列化和对请求数据格式校验
+- routers进行路由分发
+```python
+from rest_framework import routers
+
+router = routers.SimpleRouter()
+router.register(r'users', UserViewSet)
+router.register(r'accounts', AccountViewSet)
+urlpatterns = router.urls
+```
+- 认证组建，写一个类注册到认证类，在authticate里编写逻辑
+- 权限组件，写一个类注册到权限类，在has_permission里编写验证逻辑
+```python
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+class ExampleView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        content = {
+            'user': unicode(request.user),  # `django.contrib.auth.User` instance.
+            'auth': unicode(request.auth),  # None
+        }
+        return Response(content)
+```
+- 频率限制，写一个类注册到频率类，在allow_request/wait中编写认证逻辑
+- 解析器，选择对数据解析的类
+- 渲染器
+- 分页
+- 版本控制
+- 缓存
+```python
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
+
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import viewsets
+
+
+class UserViewSet(viewsets.ViewSet):
+
+    # Cache requested url for each user for 2 hours
+    @method_decorator(cache_page(60*60*2))
+    @method_decorator(vary_on_cookie)
+    def list(self, request, format=None):
+        content = {
+            'user_feed': request.user.get_user_feed()
+        }
+        return Response(content)
+
+
+class PostView(APIView):
+
+    # Cache page for the requested url
+    @method_decorator(cache_page(60*60*2))
+    def get(self, request, format=None):
+        content = {
+            'title': 'Post title',
+            'body': 'Post content'
+        }
+        return Response(content)
+```
+
+## django rest framework框架中的视图都可以继承哪些类
+- View(object)
+- APIView(View) 重新封装了request
+- GenericView(views.APIView)封装了get_queryset,get_serializer
+- GenericViewSet(ViewSetMixin, generics.GenericAPIView)重新了as_view
+- ModelViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, GenericViewSet))
+
+## django rest framework框架的认证流程
+- 用户请求走进来后,走APIView,初始化了默认的认证方法
+- 走到APIView的dispatch方法,initial方法调用了request.user
+- 如果我们配置了认证类,走我们自己认证类中的authentication方法
