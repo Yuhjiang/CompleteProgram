@@ -12,6 +12,7 @@
 - Django：最全能的web开发框架，功能完备，可维护性高，开发速度快。但是使用笨重，性能一般
 - Tornado：天生异步，性能高。但是框架提供的功能比较少。
 - Flask：自由、灵活、扩展性高，有很多第三方插件。
+- FastAPI: 基于Python3.6，性能高，可以采用async、await异步代码，使用uvicorn部署
 
 ## Django的生命周期
 - wsgi封装请求数据然后交给框架
@@ -692,3 +693,32 @@ class PostView(APIView):
 - 用户请求走进来后,走APIView,初始化了默认的认证方法
 - 走到APIView的dispatch方法,initial方法调用了request.user
 - 如果我们配置了认证类,走我们自己认证类中的authentication方法
+
+
+## Django Model里的Class Meta有什么作用
+- abstract: 如果 abstract = True， 就表示模型是 抽象基类
+- db_table: 模型所用的数据表的名称
+- db_tablespace: 当前模型所使用的数据库表空间的名字
+- default_related_name: 这个名字会默认被用于一个关联对象到当前对象的关系
+- get_latest_by: 模型中某个可排序的字段的名称，比如DateField、DateTimeField或者IntegerField。它指定了Manager的latest()和earliest()中使用的默认字段
+- managed: 默认为True，意思是Django在migrate命令中创建合适的数据表，并且会在 flush 管理命令中移除它们。换句话说，Django会管理这些数据表的生命周期。
+- ordering: 对象默认的顺序，获取一个对象的列表时使用
+- permissions: 设置创建对象时权限表中额外的权限。增加、删除和修改权限会自动为每个模型创建。
+- default_permissions: 默认为('add', 'change', 'delete')。你可以自定义这个列表
+- index_together: 列表中的字段将会建立索引
+- verbose_name: 对象的一个易于理解的名称，为单数
+- verbose_name_plural: 该对象复数形式的名称
+- indexes: 
+```python
+from django.db import models
+
+class Customer(models.Model):
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['last_name', 'first_name']),
+            models.Index(fields=['first_name'], name='first_name_idx'),
+        ]
+```
